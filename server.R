@@ -87,10 +87,10 @@ read_mat <-
 
 
 errorModal = function(err) {
-      showModal(modalDialog(sprintf(
-          'Something went wrong: %s', err
-        )))
-    }
+  showModal(modalDialog(sprintf(
+    'Something went wrong: %s', err
+  )))
+}
 
 
 # server ------------------------------------------------------------------
@@ -136,7 +136,7 @@ server <- function(input, output, session) {
   monocle_data <- NULL
   grouping_col <- NULL
 
-  datasets_overview <- data_frame( dataset = character(0), n_genes = 0, n_samples = 0)
+  datasets_overview <- data_frame( dataset = character(0), n_genes = character(0), n_samples = character(0))
   raw_mat_list <- list()
   sample_meta_list <- list()
   num_datasets <- 1
@@ -284,6 +284,11 @@ server <- function(input, output, session) {
       write(as.integer(Sys.time()), sprintf("%s/disconnected", current_dir))
     }
   )
+  # onStop(
+  #   function(){
+  #     gc()
+  #   }
+  # )
 
   observeEvent(input$uploadStep_no_meta, {
     if(restoring) { return() }
@@ -362,7 +367,7 @@ server <- function(input, output, session) {
               'Looks like some of the samples in the count table is not annotated by any row in the sample
               metadata. Please check your uploaded files.'
             )
-            )
+          )
         }
 
         if (nrow(sample_meta) == 0) {
@@ -371,7 +376,7 @@ server <- function(input, output, session) {
               'Looks like entries in the first column of the metadata do not correspond to the column names
               of the count table. Please check your uploaded files.'
             )
-            )
+          )
         }
 
         raw_mat <<-
@@ -382,7 +387,7 @@ server <- function(input, output, session) {
         }
 
         species <<- input$uploadStep_species
-        }
+      }
 
       try <- risky %>% quietly %>% safely %>% {
         .()
@@ -442,7 +447,7 @@ server <- function(input, output, session) {
 
       uploadStep_prep()
 
-      })
+    })
   })
 
   observeEvent(input$uploadStep_reset, {
@@ -830,7 +835,7 @@ server <- function(input, output, session) {
                         ))
     } else {
       output$uploadStep_preview_exp_profile_dt <-
-        renderDataTable(datatable(raw_df),
+        renderDataTable(raw_df,
                         options = list(
                           pageLength = 10,
                           autoWidth = T,
@@ -880,7 +885,7 @@ server <- function(input, output, session) {
     save_var("batchEffectStep_raw_mat_l")
     save_var("batchEffectStep_sampling")
 
-#    batchEffectStep_refresh_plots()
+    #    batchEffectStep_refresh_plots()
   }
 
   outlierRemovalStep_prep <- function() {
@@ -1380,14 +1385,14 @@ server <- function(input, output, session) {
 
     tryCatch({
 
-    normalizationStep_raw_mat_l <<- normalizationStep_raw_mat_l %>% exp %>% {
-      . - 1
-    } %>%
-      deseq_sizefactor_normalization %>% {
-        . + 1
-      } %>% log
+      normalizationStep_raw_mat_l <<- normalizationStep_raw_mat_l %>% exp %>% {
+        . - 1
+      } %>%
+        deseq_sizefactor_normalization %>% {
+          . + 1
+        } %>% log
 
-      }, error = errorModal)
+    }, error = errorModal)
 
     save_var("normalizationStep_raw_mat_l")
 
@@ -1756,7 +1761,7 @@ server <- function(input, output, session) {
         "matrix.csv"
       },
       content = function(file) {
-      write('"Please cite: Zhu, Xun et al. “Granatum: A Graphical Single-Cell RNA-Seq Analysis Pipeline for Genomics Scientists.” Genome Medicine 9.1 (2017)"\n',file=file)
+        write('"Please cite: Zhu, Xun et al. “Granatum: A Graphical Single-Cell RNA-Seq Analysis Pipeline for Genomics Scientists.” Genome Medicine 9.1 (2017)"\n',file=file)
         raw_mat_l %>% {
           exp(.) - 1
         } %>% as.data.frame %>% rownames_to_column('Gene') %>% write_csv(file, append=T)
@@ -1768,7 +1773,7 @@ server <- function(input, output, session) {
         "clustering.csv"
       },
       content = function(file) {
-      write('"Please cite: Zhu, Xun et al. “Granatum: A Graphical Single-Cell RNA-Seq Analysis Pipeline for Genomics Scientists.” Genome Medicine 9.1 (2017)"\n',file=file)
+        write('"Please cite: Zhu, Xun et al. “Granatum: A Graphical Single-Cell RNA-Seq Analysis Pipeline for Genomics Scientists.” Genome Medicine 9.1 (2017)"\n',file=file)
         cluster_df <-
           data_frame(sample = colnames(raw_mat_l), cluster = clusters)
         print(colnames(sample_meta))
@@ -1845,40 +1850,40 @@ server <- function(input, output, session) {
 
     tryCatch({
       withProgress(message = 'Computing differential expression ...', {
-      mat <- raw_mat[rownames(raw_mat_l), colnames(raw_mat_l)]
-      n_clusters <- clusters %>% unique %>% length
-      if (ncol(mat) > n_clusters * 48) {
-        idx <- sample(1:ncol(mat), n_clusters * 48)
-        mat <- mat[, idx]
-        clusters <- clusters[idx]
-      }
-      mode(mat) <- 'integer'
+        mat <- raw_mat[rownames(raw_mat_l), colnames(raw_mat_l)]
+        n_clusters <- clusters %>% unique %>% length
+        if (ncol(mat) > n_clusters * 48) {
+          idx <- sample(1:ncol(mat), n_clusters * 48)
+          mat <- mat[, idx]
+          clusters <- clusters[idx]
+        }
+        mode(mat) <- 'integer'
 
-      if (isolate(input$diffExpStep_select_vec) == 'Clusters') {
-        diffExpStep_res <<-
-          do_diff_exp(
-            mat,
-            clusters,
-            TRUE,
-            isolate(input$uploadStep_num_cores),
-            isolate(input$diffExpStep_methods)
-          )
-      } else {
-        meta_col <- sample_meta[[isolate(input$diffExpStep_select_vec)]]
-        names(meta_col) <- sample_meta$ID
-        vec <- meta_col[colnames(raw_mat_l)]
-        diffExpStep_res <<-
-          do_diff_exp(mat,
-                      vec,
-                      TRUE,
-                      isolate(input$uploadStep_num_cores),
-                      isolate(input$diffExpStep_methods))
-      }
+        if (isolate(input$diffExpStep_select_vec) == 'Clusters') {
+          diffExpStep_res <<-
+            do_diff_exp(
+              mat,
+              clusters,
+              TRUE,
+              isolate(input$uploadStep_num_cores),
+              isolate(input$diffExpStep_methods)
+            )
+        } else {
+          meta_col <- sample_meta[[isolate(input$diffExpStep_select_vec)]]
+          names(meta_col) <- sample_meta$ID
+          vec <- meta_col[colnames(raw_mat_l)]
+          diffExpStep_res <<-
+            do_diff_exp(mat,
+                        vec,
+                        TRUE,
+                        isolate(input$uploadStep_num_cores),
+                        isolate(input$diffExpStep_methods))
+        }
 
-      save_var("diffExpStep_res")
+        save_var("diffExpStep_res")
 
-      diffExpStep_refresh_plots()
-    })
+        diffExpStep_refresh_plots()
+      })
     }, error = errorModal)
 
     tbps <- list()
@@ -1937,12 +1942,12 @@ server <- function(input, output, session) {
       })
       observeEvent(input[[sprintf('diffExpStep_go_analysis_%d', i)]], {
         output[[sprintf('diffExpStep_plot_%d', i)]] <- renderPlot(withProgress(message =
-                                                                        'Performing enrichment analysis ...', {
-                                                                          do_geneOntology_analysis(rownames(diffExpStep_res[[i]]),
-                                                                                         diffExpStep_res[[i]]$Z,
-                                                                                         species,
-                                                                                         names(diffExpStep_res)[i])
-                                                                        }))
+                                                                                 'Performing enrichment analysis ...', {
+                                                                                   do_geneOntology_analysis(rownames(diffExpStep_res[[i]]),
+                                                                                                            diffExpStep_res[[i]]$Z,
+                                                                                                            species,
+                                                                                                            names(diffExpStep_res)[i])
+                                                                                 }))
         shinyjs::show(sprintf('diffExpStep_plot_%d', i))
       })
     })
