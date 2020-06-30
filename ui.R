@@ -39,6 +39,7 @@ ui <- function(request) {
           'Note 2: depending on dataset size, some steps may take time. Please allow computations to complete even if your browser appears to hang.'
         ),
         p('Note 3: if you encounter an error please', tags$a(href = "https://github.com/lanagarmire/granatum/issues", 'create a New Issue', target = "_blank"), 'in our GitHub repository'),
+        p(strong('***Now we have a new version of Grantum, please try it',a(href = 'http://35.222.3.147:34567/', em('here')),'***')),
         actionButton('info_next', 'Proceed to Step 1', class = 'btn-success', onclick = "openSurveyOnce();")
       ),
       fluidRow(
@@ -105,6 +106,14 @@ ui <- function(request) {
         p(
           'Thank you! If there are any questions please contact us: lana.garmire.group@gmail.com'
         )
+      )
+    ),
+    # End of Inofrmation panel
+    navbarMenu(
+      "BUZZ",
+      tabPanel(
+        value = 'heat',
+        strong("HEATMAP")
       )
     ),
     navbarMenu(
