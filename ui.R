@@ -6,6 +6,7 @@ library(plotly)
 library(dplyr)
 library(markdown)
 library(shinythemes)
+library(DT)
 
 # ui ----------------------------------------------------------------------
 
@@ -106,14 +107,6 @@ ui <- function(request) {
         p(
           'Thank you! If there are any questions please contact us: lana.garmire.group@gmail.com'
         )
-      )
-    ),
-    # End of Inofrmation panel
-    navbarMenu(
-      "BUZZ",
-      tabPanel(
-        value = 'heat',
-        strong("HEATMAP")
       )
     ),
     navbarMenu(
@@ -480,8 +473,15 @@ ui <- function(request) {
           ),
           numericInput('clusterStep_num_clusters', 'Number of clusters', 3L, 1L, 20L, 1L),
           h5(textOutput('clusterStep_num_clusters_auto') %>% hidden),
-          actionButton('clusterStep_cluster', 'Run clustering')
+          actionButton('clusterStep_cluster', 'Run clustering'),
+          actionButton('heatmap', 'Show heatmap')
         ),
+        fluidRow(
+          id = 'clusterStep_confirm_heat',
+          hr(),
+          column(4, numericInput('num_heatmap', 'Show heatmap for cluster',1, width = '100px' ),
+          actionButton('heatmap_clust','Show'))
+        ) %>% hidden,
         fluidRow(
           id = 'clusterStep_confirm_tray',
           class = 'right-align',
@@ -489,7 +489,7 @@ ui <- function(request) {
           downloadButton('clusterStep_download_mat', 'Download the filtered matrix'),
           downloadButton('clusterStep_download', 'Download CSV table'),
           actionButton('clusterStep_confirm', 'Submit', class = 'btn-success')
-        ) %>% hidden
+        ) %>% hidden,
       ),
 
       tabPanel(
@@ -563,6 +563,10 @@ ui <- function(request) {
           id = 'diffExpStep_confirm_tray',
           class = 'right-align',
           hr(),
+          actionButton('heatmap_diff', 'Show heatmap'),
+          # actionButton('heatmap_diff_13', 'Show heatmap of 1 vs. 3 '),
+          # actionButton('heatmap_diff_23', 'Show heatmap of 2 vs. 3 '),
+          # selectInput('drop_diff_heat', 'Heat map for table ', names(diffExpStep_res[])),
           downloadButton('diffExpStep_download', 'Download CSV table'),
           actionButton('diffExpStep_confirm', 'Submit', class = 'btn-success')
         ) %>% hidden

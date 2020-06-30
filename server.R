@@ -110,6 +110,7 @@ server <- function(input, output, session) {
   pr_dat <- NULL
   tsne_dat <- NULL
   sample_meta <- NULL
+  temp_clust <- NULL
   raw_mat_l <- NULL
   pr <- NULL
   tsne <- NULL
@@ -135,7 +136,7 @@ server <- function(input, output, session) {
   monocle_data <- NULL
   grouping_col <- NULL
 
-  datasets_overview <- data_frame( dataset = character(0), n_genes = character(0), n_samples = character(0))
+  datasets_overview <- data_frame( dataset = character(0), n_genes = 0, n_samples = 0)
   raw_mat_list <- list()
   sample_meta_list <- list()
   num_datasets <- 1
@@ -176,7 +177,8 @@ server <- function(input, output, session) {
     "all_genes",
     "all_samples",
     "batchEffectStep_raw_mat_l",
-    "species"
+    "species",
+    "temp_clust"
   )
 
   save_var <- function(var) {
@@ -828,7 +830,7 @@ server <- function(input, output, session) {
                         ))
     } else {
       output$uploadStep_preview_exp_profile_dt <-
-        renderDataTable(raw_df,
+        renderDataTable(datatable(raw_df),
                         options = list(
                           pageLength = 10,
                           autoWidth = T,
@@ -1642,15 +1644,16 @@ server <- function(input, output, session) {
         ),
         seed = 12345
       )
-    predict(ren) %>% factor
+    temp_clust <<- predict(ren) %>% factor
   }
 
   run_hclust <- function(mat, n) {
-    cutree(hclust(dist(t(mat))), n) %>% factor
+    temp_clust <<- cutree(hclust(dist(t(mat))), n) %>% factor
   }
 
   run_kmeans <- function(mat, n) {
-    kmeans(t(mat), n)$cluster %>% factor
+    temp_clust <<- kmeans(t(mat), n)$cluster %>% factor
+
   }
 
   observeEvent(input$clusterStep_select_col, {
@@ -1691,6 +1694,24 @@ server <- function(input, output, session) {
 
     cls
   }
+  observeEvent(input$heatmap, {
+    showModal(modalDialog(size = 'l', plotOutput('clusterStep_heatmap', height = '800px')))
+    output$clusterStep_heatmap <-
+      renderPlot(withProgress(message = 'Generating heatmap ...', heatmap(raw_mat_l,scale = "column")))
+  })
+  observeEvent(input$heatmap_clust, {
+    names(temp_clust) = names(raw_mat_l[1,])
+    temp_list <- names(temp_clust[which(temp_clust == isolate(input$num_heatmap))])
+    temp_sub_table <- raw_mat_l[,temp_list]
+    showModal(modalDialog(size = 'l', plotOutput('clusterStep_heatmap', height = '800px')))
+    output$clusterStep_heatmap <-
+      renderPlot(withProgress(message = 'Generating heatmap ...', heatmap(temp_sub_table,scale = "column")))
+  })
+  observeEvent(input$heatmap_diff, {
+    showModal(modalDialog(size = 'l', plotOutput('clusterStep_heatmap', height = '800px')))
+    output$clusterStep_heatmap <-
+      renderPlot(withProgress(message = 'Generating heatmap ...', heatmap(as.matrix(diffExpStep_res[[1]]),scale = "column")))
+  })
 
   observeEvent(input$clusterStep_cluster, {
     if(restoring) { return() }
@@ -1755,7 +1776,7 @@ server <- function(input, output, session) {
         sample_meta %>% left_join(cluster_df, by = c(ID = 'sample')) %>% write_csv(file, append=T)
       }
     )
-
+    shinyjs::show('clusterStep_confirm_heat')
     shinyjs::show('clusterStep_confirm_tray')
   })
 
